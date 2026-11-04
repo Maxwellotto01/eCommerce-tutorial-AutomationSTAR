@@ -1,0 +1,219 @@
+openapi: 3.0.3
+info:
+  title: E-commerce Checkout API
+  version: 1.0.0
+  description: |
+    Simple checkout API with an in-memory database.
+    Business rule: paying with `cash` gives a 10% discount; `credit_card` gives no discount.
+servers:
+  - url: http://localhost:3000
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /login:
+    post:
+      summary: Log in and get a bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Error'
+  /cart:
+    get:
+      summary: View the authenticated user's cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Add a product to the cart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToCartRequest'
+      responses:
+        '201':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /checkout:
+    post:
+      summary: Check out the cart (10% discount when paying with cash)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          example: Dave Brown
+        email:
+          type: string
+          example: dave@example.com
+        password:
+          type: string
+          example: dave123
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          example: alice@example.com
+        password:
+          type: string
+          example: alice123
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+    AddToCartRequest:
+      type: object
+      required: [productId]
+      properties:
+        productId:
+          type: integer
+          example: 1
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+    CartItem:
+      type: object
+      properties:
+        productId:
+          type: integer
+        name:
+          type: string
+        unitPrice:
+          type: number
+        quantity:
+          type: integer
+        subtotal:
+          type: number
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
+    CheckoutRequest:
+      type: object
+      required: [paymentMethod]
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, credit_card]
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        paymentMethod:
+          type: string
+        subtotal:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number

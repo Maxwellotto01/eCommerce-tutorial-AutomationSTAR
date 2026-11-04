@@ -92,6 +92,7 @@ app.post('/checkout', auth, (req, res) => {
 });
 
 const specPath = path.join(__dirname, '..', 'openapi.yaml');
+app.get('/', (req, res) => res.json({ status: 'ok', message: 'eCommerce API is running' }));
 app.get('/api-docs.yaml', (req, res) => {
   res.type('application/yaml').send(fs.readFileSync(specPath, 'utf8'));
 });

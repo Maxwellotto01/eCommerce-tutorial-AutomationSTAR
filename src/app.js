@@ -16,8 +16,8 @@ const app = express();
 app.use(express.json());
 
 function auth(req, res, next) {
-  const match = /^Bearer (.+)$/.exec(req.headers.authorization || '');
-  const userId = match && db.sessions[match[1]];
+  const match = /^Bearer (.+)$/i.exec(req.get('authorization') || '');
+  const userId = match && Object.hasOwn(db.sessions, match[1]) ? db.sessions[match[1]] : undefined;
   if (!userId) return res.status(401).json({ error: 'Missing or invalid token' });
   req.userId = userId;
   next();
@@ -60,6 +60,11 @@ app.post('/cart', auth, (req, res) => {
   if (!db.products.some((p) => p.id === productId)) return res.status(404).json({ error: 'Product not found' });
   if (!Number.isInteger(quantity) || quantity < 1) {
     return res.status(400).json({ error: 'quantity must be a positive integer' });
+  }
+  const maxQuantity = db.products.length;
+  const existing = (db.carts[req.userId] || []).find((l) => l.productId === productId);
+  if (quantity > maxQuantity || (existing ? existing.quantity : 0) + quantity > maxQuantity) {
+    return res.status(400).json({ error: `quantity must not exceed ${maxQuantity}` });
   }
   const cart = (db.carts[req.userId] = db.carts[req.userId] || []);
   const line = cart.find((l) => l.productId === productId);
